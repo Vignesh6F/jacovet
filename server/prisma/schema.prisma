@@ -1,0 +1,130 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      String   // "owner", "doctor", "admin", "super-admin"
+  createdAt DateTime @default(now())
+  owner     Owner?
+  vet       Vet?
+}
+
+model Owner {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pets      Pet[]
+}
+
+model Vet {
+  id           String        @id @default(uuid())
+  name         String
+  specialty    String
+  experience   String
+  rating       Float         @default(5.0)
+  price        Int           @default(500)
+  clinicId     String
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  location     String
+  lat          Float
+  lng          Float
+  image        String
+  bio          String
+  categories   String        // Comma-separated list e.g., "Dog,Cat"
+  plan         String        @default("FreeStarter") // "FreeStarter", "ClinicGrowth", "ProPremium"
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+}
+
+model Clinic {
+  id       String @id @default(uuid())
+  name     String
+  location String
+  rating   Float  @default(5.0)
+  vets     Vet[]
+}
+
+model Pet {
+  id               String          @id @default(uuid())
+  name             String
+  species          String          // e.g., "Dog", "Cat", "Bird"
+  breed            String
+  gender           String
+  dob              String
+  weight           String
+  color            String
+  microchip        String
+  bloodGroup       String
+  allergies        String
+  emergencyContact String
+  insurance        String          @default("None")
+  ownerId          String
+  owner            Owner           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  records          MedicalRecord[]
+  appointments     Appointment[]
+}
+
+model MedicalRecord {
+  id             String @id @default(uuid())
+  petId          String
+  pet            Pet    @relation(fields: [petId], references: [id], onDelete: Cascade)
+  doctorId       String
+  doctorName     String
+  clinicName     String
+  visitDate      String
+  type           String // "Checkup", "Vaccination", "Surgery", "Lab Report"
+  chiefComplaint String
+  temp           String
+  weight         String
+  heartRate      String
+  diagnosis      String
+  notes          String
+  prescriptions  String // JSON stringified array of medicines
+  vaccinations   String // JSON stringified array of vaccines given
+  followUpDate   String
+}
+
+model Appointment {
+  id           String  @id @default(uuid())
+  vetId        String
+  vet          Vet     @relation(fields: [vetId], references: [id], onDelete: Cascade)
+  petId        String
+  pet          Pet     @relation(fields: [petId], references: [id], onDelete: Cascade)
+  ownerEmail   String
+  date         String
+  time         String
+  reason       String
+  status       String  @default("upcoming") // "upcoming", "completed", "cancelled"
+  notes        String  @default("")
+  prescription String  @default("")
+  billed       Boolean @default(false)
+  billAmount   Int     @default(0)
+}
+
+model InventoryItem {
+  id                   String @id @default(uuid())
+  name                 String
+  category             String // "Vaccines", "Medications", "Supplements", etc.
+  stock                Int
+  consumptionThisMonth Int    @default(0)
+  minLimit             Int
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  user      String
+  role      String
+  action    String
+  details   String
+}
