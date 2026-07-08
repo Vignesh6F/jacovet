@@ -58,3 +58,18 @@ export const useRescheduleAppointment = () => {
     }
   });
 };
+
+// Fetch booked slots for a veterinarian
+export const useBookedSlots = (vetId, date, enabled = true) => {
+  return useQuery({
+    queryKey: ['appointments', 'booked', vetId, date],
+    queryFn: async () => {
+      if (!vetId) return [];
+      const response = await api.get(`/appointments/booked/${vetId}`, {
+        params: { date }
+      });
+      return response.data;
+    },
+    enabled: !!vetId && enabled
+  });
+};

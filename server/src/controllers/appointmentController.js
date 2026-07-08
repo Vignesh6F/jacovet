@@ -219,11 +219,46 @@ const rescheduleAppointment = async (req, res) => {
   }
 };
 
+// Get booked slots for a specific veterinarian
+const getBookedSlots = async (req, res) => {
+  try {
+    const { vetId } = req.params;
+    const { date } = req.query;
+
+    if (!vetId) {
+      return res.status(400).json({ message: 'Veterinarian ID is required.' });
+    }
+
+    const where = {
+      vetId,
+      status: { not: 'cancelled' }
+    };
+
+    if (date) {
+      where.date = date;
+    }
+
+    const booked = await prisma.appointment.findMany({
+      where,
+      select: {
+        date: true,
+        time: true
+      }
+    });
+
+    return res.status(200).json(booked);
+  } catch (error) {
+    console.error('Error fetching booked slots:', error);
+    return res.status(500).json({ message: 'Failed to retrieve booked slots.' });
+  }
+};
+
 module.exports = {
   getOwnerAppointments,
   getDoctorAppointments,
   getAdminAppointments,
   bookAppointment,
   cancelAppointment,
-  rescheduleAppointment
+  rescheduleAppointment,
+  getBookedSlots
 };

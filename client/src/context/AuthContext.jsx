@@ -62,6 +62,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const registerDoctor = async (name, email, password, specialty, experience) => {
+    try {
+      const response = await api.post('/auth/register-doctor', {
+        name,
+        email,
+        password,
+        specialty,
+        experience
+      });
+      const { token, user: userProfile } = response.data;
+      
+      localStorage.setItem('jacovet_token', token);
+      localStorage.setItem('jacovet_user', JSON.stringify(userProfile));
+      
+      setToken(token);
+      setUser(userProfile);
+      return { success: true };
+    } catch (error) {
+      console.error('Doctor registration error:', error);
+      const message = error.response?.data?.message || 'Doctor registration failed. Try again.';
+      return { success: false, message };
+    }
+  };
+
   const logoutUser = () => {
     localStorage.removeItem('jacovet_token');
     localStorage.removeItem('jacovet_user');
@@ -76,6 +100,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     login: loginUser,
     register: registerUser,
+    registerDoctor,
     logout: logoutUser
   };
 

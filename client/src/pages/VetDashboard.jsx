@@ -3,18 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppointments } from '../hooks/useAppointments';
 import { useSearchPets } from '../hooks/usePets';
-import { useAddConsultRecord } from '../hooks/useRecords';
+import { useAddConsultRecord, usePetTimeline } from '../hooks/useRecords';
 import { useInventory, useRestockItem, useRestockAll } from '../hooks/useInventory';
 import Toast from '../components/Toast';
-import { Stethoscope, Search, CheckCircle, Package, ArrowRight, User, ShieldCheck } from 'lucide-react';
+import { Stethoscope, Search, CheckCircle, Package, ArrowRight, ArrowLeft, User, ShieldCheck } from 'lucide-react';
 
 const VetDashboard = () => {
-  const { user } = useAuth();
+  const { user, isLoggedIn, loading } = useAuth();
   const navigate = useNavigate();
 
   // Queries
-  const { data: appointments, isLoading: apptsLoading } = useAppointments('doctor');
-  const { data: inventory, isLoading: invLoading } = useInventory();
+  const { data: appointments, isLoading: apptsLoading } = useAppointments('doctor', isLoggedIn && user?.role === 'doctor');
+  const { data: inventory, isLoading: invLoading } = useInventory(isLoggedIn && user?.role === 'doctor');
   
   const addConsultMutation = useAddConsultRecord();
   const restockMutation = useRestockItem();
@@ -24,9 +24,10 @@ const VetDashboard = () => {
   const [vetDashboardTab, setVetDashboardTab] = useState('appointments'); // 'appointments', 'search', 'inventory'
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
+  const [viewingAppt, setViewingAppt] = useState(null);
   
   // Search query
-  const { data: searchResults, isLoading: searchLoading } = useSearchPets(activeSearch);
+  const { data: searchResults, isLoading: searchLoading } = useSearchPets(activeSearch, isLoggedIn && user?.role === 'doctor');
 
   // Consult Modal / Check-in states
   const [completingAppt, setCompletingAppt] = useState(null);
@@ -39,11 +40,24 @@ const VetDashboard = () => {
   // Vaccines
   const [vaccineInput, setVaccineInput] = useState({ administer: false, name: 'DHPP Booster', batch: 'B-9021', manufacturer: 'Zoetis', dueDate: '' });
 
+  // Vitals & base health states
+  const [temp, setTemp] = useState('101.2 °F');
+  const [weight, setWeight] = useState('');
+  const [heartRate, setHeartRate] = useState('96 bpm');
+
   // Consent approval
   const [consentGranted, setConsentGranted] = useState({});
 
   // Notification
   const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  if (loading) {
+    return <div className="container" style={{ padding: '6rem 0', textAlign: 'center' }}>Loading application session...</div>;
+  }
+
+  if (!isLoggedIn || user?.role !== 'doctor') {
+    return <DoctorLogin />;
+  }
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -76,9 +90,9 @@ const VetDashboard = () => {
       petId: completingAppt.petId,
       type: vaccineInput.administer ? 'Vaccination' : 'Checkup',
       chiefComplaint,
-      temp: '101.2 °F',
-      weight: completingAppt.pet?.weight || 'Unknown',
-      heartRate: '96 bpm',
+      temp,
+      weight: weight || completingAppt.pet?.weight || 'Unknown',
+      heartRate,
       diagnosis: clinicalDiagnosis,
       notes: clinicalNotes,
       prescriptions: prescriptionMeds,
@@ -103,6 +117,9 @@ const VetDashboard = () => {
         setClinicalNotes('');
         setPrescriptionMeds([]);
         setVaccineInput({ administer: false, name: 'DHPP Booster', batch: 'B-9021', manufacturer: 'Zoetis', dueDate: '' });
+        setTemp('101.2 °F');
+        setWeight('');
+        setHeartRate('96 bpm');
       },
       onError: (err) => {
         showToast(err.response?.data?.message || 'Failed to save consultation.', 'danger');
@@ -173,13 +190,24 @@ const VetDashboard = () => {
       {vetDashboardTab === 'appointments' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          {/* Stats summary */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-            <div className="card" style={{ padding: '1.25rem', marginBottom: 0 }}>
+            <div 
+              className="card" 
+              style={{ padding: '1.25rem', marginBottom: 0, cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+              onClick={() => document.getElementById('pending-queue-section')?.scrollIntoView({ behavior: 'smooth' })}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+            >
               <span className="stat-label">Pending Checks</span>
               <span className="stat-number" style={{ color: 'var(--primary)', marginTop: '0.25rem' }}>{upcomingAppts.length}</span>
             </div>
-            <div className="card" style={{ padding: '1.25rem', marginBottom: 0 }}>
+            <div 
+              className="card" 
+              style={{ padding: '1.25rem', marginBottom: 0, cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+              onClick={() => document.getElementById('treated-cases-section')?.scrollIntoView({ behavior: 'smooth' })}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+            >
               <span className="stat-label">Completed Checks</span>
               <span className="stat-number" style={{ color: 'var(--secondary)', marginTop: '0.25rem' }}>{completedAppts.length}</span>
             </div>
@@ -190,7 +218,7 @@ const VetDashboard = () => {
           </div>
 
           {/* Pending queue */}
-          <div className="card" style={{ marginBottom: 0 }}>
+          <div className="card" id="pending-queue-section" style={{ marginBottom: 0 }}>
             <h2 style={{ fontSize: '1.4rem', marginBottom: '1.5rem' }}>Checked-in Pet Queue</h2>
             {apptsLoading ? (
               <p>Loading patient queue...</p>
@@ -209,7 +237,7 @@ const VetDashboard = () => {
                       </div>
                       <div className="appt-details">
                         <span className="appt-vet-name" style={{ color: 'var(--neutral-950)' }}>Patient: {appt.pet?.name} ({appt.pet?.species})</span>
-                        <span className="appt-sub-detail">Owner Contact: {appt.ownerEmail}</span>
+                        <span className="appt-sub-detail">Owner Contact: {appt.ownerEmail} • Blood Group: <strong>{appt.pet?.bloodGroup || 'Unknown'}</strong></span>
                         <span className="appt-sub-detail" style={{ fontStyle: 'italic', marginTop: '0.1rem' }}>Reason: "{appt.reason}"</span>
                       </div>
                     </div>
@@ -220,7 +248,13 @@ const VetDashboard = () => {
                         <span className="appt-time" style={{ fontSize: '0.85rem', color: 'var(--neutral-500)' }}>Slot: {appt.time}</span>
                       </div>
                       
-                      <button className="btn btn-teal" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => { setCompletingAppt(appt); setChiefComplaint(appt.reason); }}>
+                      <button className="btn btn-teal" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => { 
+                        setCompletingAppt(appt); 
+                        setChiefComplaint(appt.reason); 
+                        setTemp('101.2 °F');
+                        setHeartRate('96 bpm');
+                        setWeight(appt.pet?.weight || '');
+                      }}>
                         Consultation Check-in
                       </button>
                     </div>
@@ -231,7 +265,7 @@ const VetDashboard = () => {
           </div>
 
           {/* Closed Cases */}
-          <div className="card" style={{ marginBottom: 0 }}>
+          <div className="card" id="treated-cases-section" style={{ marginBottom: 0 }}>
             <h2 style={{ fontSize: '1.4rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <CheckCircle size={20} style={{ color: 'var(--secondary)' }} />
               Treated & Closed Cases (Today)
@@ -241,7 +275,14 @@ const VetDashboard = () => {
             ) : (
               <div className="appointment-list">
                 {completedAppts.map(appt => (
-                  <div key={appt.id} className="appointment-item" style={{ borderLeft: '4px solid var(--secondary)' }}>
+                  <div 
+                    key={appt.id} 
+                    className="appointment-item" 
+                    style={{ borderLeft: '4px solid var(--secondary)', cursor: 'pointer', transition: 'all 0.15s' }}
+                    onClick={() => setViewingAppt(appt)}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--neutral-50)'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
                     <div className="appt-info-main">
                       <div className="appt-status-icon status-completed-bg">
                         <CheckCircle size={20} />
@@ -257,6 +298,9 @@ const VetDashboard = () => {
                         <span className="appt-date" style={{ fontWeight: 'bold', display: 'block' }}>{appt.date}</span>
                         <span className="appt-time" style={{ fontSize: '0.85rem', color: 'var(--neutral-500)' }}>Closed: {appt.time}</span>
                       </div>
+                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.78rem' }}>
+                        View Report 📄
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -304,7 +348,7 @@ const VetDashboard = () => {
                         </div>
                         <div className="appt-details">
                           <span className="appt-vet-name" style={{ color: 'var(--neutral-900)' }}>Patient: {pet.name} ({pet.breed})</span>
-                          <span className="appt-sub-detail">Owner Name: {pet.owner?.name} • Microchip: {pet.microchip}</span>
+                          <span className="appt-sub-detail">Owner Name: {pet.owner?.name} • Microchip: {pet.microchip} • Blood Group: <strong>{pet.bloodGroup || 'Unknown'}</strong></span>
                           <span className="appt-sub-detail" style={{ color: 'var(--accent-red)' }}>Allergies: {pet.allergies}</span>
                         </div>
                       </div>
@@ -433,6 +477,49 @@ const VetDashboard = () => {
                   <textarea className="form-control" rows={3} placeholder="Instill ear drops, booster admin notes..." value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
                 </div>
 
+                 {/* Vitals & Base Health Metrics */}
+                 <div style={{ border: '1px solid var(--neutral-200)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                   <span style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'block' }}>🩺 Vitals & Base Health Support</span>
+                   
+                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                     <div className="form-group" style={{ marginBottom: 0 }}>
+                       <label className="form-label" style={{ fontSize: '0.75rem' }}>Temperature</label>
+                       <input 
+                         type="text" 
+                         className="form-control" 
+                         style={{ padding: '0.4rem', fontSize: '0.8rem' }}
+                         value={temp} 
+                         onChange={(e) => setTemp(e.target.value)} 
+                         required 
+                       />
+                     </div>
+
+                     <div className="form-group" style={{ marginBottom: 0 }}>
+                       <label className="form-label" style={{ fontSize: '0.75rem' }}>Weight</label>
+                       <input 
+                         type="text" 
+                         className="form-control" 
+                         style={{ padding: '0.4rem', fontSize: '0.8rem' }}
+                         value={weight} 
+                         onChange={(e) => setWeight(e.target.value)} 
+                         required 
+                       />
+                     </div>
+
+                     <div className="form-group" style={{ marginBottom: 0 }}>
+                       <label className="form-label" style={{ fontSize: '0.75rem' }}>Heart Rate</label>
+                       <input 
+                         type="text" 
+                         className="form-control" 
+                         style={{ padding: '0.4rem', fontSize: '0.8rem' }}
+                         value={heartRate} 
+                         onChange={(e) => setHeartRate(e.target.value)} 
+                         required 
+                       />
+                     </div>
+                   </div>
+                 </div>
+
                 {/* Prescription drugs section */}
                 <div style={{ border: '1px solid var(--neutral-200)', borderRadius: '12px', padding: '1rem' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>💊 Prescribe Medications</span>
@@ -450,7 +537,7 @@ const VetDashboard = () => {
                       className="form-control" 
                       placeholder="Dosage (e.g. 4 drops)" 
                       value={medInput.dosage} 
-                      onChange={(prev) => setMedInput(prev => ({ ...prev, dosage: prev.target.value }))}
+                      onChange={(e) => setMedInput(prev => ({ ...prev, dosage: e.target.value }))}
                     />
                   </div>
 
@@ -521,6 +608,379 @@ const VetDashboard = () => {
         </div>
       )}
 
+      {/* Modal: View Completed Consult Details */}
+      {viewingAppt && (
+        <div className="modal-overlay" onClick={() => setViewingAppt(null)}>
+          <div className="modal-content" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Completed Consultation Details</h2>
+              <button className="modal-close" onClick={() => setViewingAppt(null)}>✕</button>
+            </div>
+            
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--neutral-200)', paddingBottom: '0.75rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem' }}>Patient: {viewingAppt.pet?.name}</h3>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--neutral-500)' }}>Species/Breed: {viewingAppt.pet?.species} ({viewingAppt.pet?.breed || 'N/A'})</span>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontWeight: 'bold', display: 'block' }}>Date: {viewingAppt.date}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--neutral-500)' }}>Closed at: {viewingAppt.time}</span>
+                </div>
+              </div>
+
+              {/* Record details with query fallback */}
+              <ConsultRecordDetails 
+                petId={viewingAppt.petId} 
+                date={viewingAppt.date} 
+                apptNotes={viewingAppt.notes} 
+                apptPrescription={viewingAppt.prescription} 
+                apptReason={viewingAppt.reason} 
+              />
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setViewingAppt(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+const ConsultRecordDetails = ({ petId, date, apptNotes, apptPrescription, apptReason }) => {
+  const { data: timelineData, isLoading } = usePetTimeline(petId);
+
+  if (isLoading) {
+    return <p style={{ textAlign: 'center', padding: '1rem', color: 'var(--neutral-500)' }}>Retrieving treatment records...</p>;
+  }
+
+  const record = timelineData?.records?.find(r => r.visitDate === date);
+
+  if (!record) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div>
+          <strong>Chief Complaint:</strong>
+          <p style={{ marginTop: '0.25rem', padding: '0.75rem', backgroundColor: 'var(--neutral-50)', borderRadius: '8px', border: '1px solid var(--neutral-150)', fontSize: '0.9rem' }}>
+            "{apptReason || 'N/A'}"
+          </p>
+        </div>
+        <div>
+          <strong>Diagnosis / Findings:</strong>
+          <p style={{ marginTop: '0.25rem', padding: '0.75rem', backgroundColor: 'var(--neutral-50)', borderRadius: '8px', border: '1px solid var(--neutral-150)', fontSize: '0.9rem' }}>
+            {apptNotes || 'Routine checkup completed.'}
+          </p>
+        </div>
+        {apptPrescription && (
+          <div>
+            <strong>Prescription:</strong>
+            <pre style={{ marginTop: '0.25rem', padding: '0.75rem', backgroundColor: 'var(--neutral-50)', borderRadius: '8px', border: '1px solid var(--neutral-150)', fontFamily: 'monospace', fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
+              {apptPrescription}
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  let prescriptions = [];
+  try { prescriptions = JSON.parse(record.prescriptions || '[]'); } catch(e) {}
+  
+  let vaccinations = [];
+  try { vaccinations = JSON.parse(record.vaccinations || '[]'); } catch(e) {}
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', backgroundColor: 'var(--neutral-50)', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--neutral-200)', fontSize: '0.82rem' }}>
+        <div>🌡️ Temp: <strong>{record.temp}</strong></div>
+        <div>⚖️ Weight: <strong>{record.weight}</strong></div>
+        <div>💓 Heart Rate: <strong>{record.heartRate}</strong></div>
+      </div>
+
+      <div>
+        <strong>Chief Complaint:</strong>
+        <p style={{ marginTop: '0.25rem', padding: '0.75rem', backgroundColor: 'var(--neutral-50)', borderRadius: '8px', border: '1px solid var(--neutral-150)', fontSize: '0.9rem' }}>
+          "{record.chiefComplaint}"
+        </p>
+      </div>
+
+      <div>
+        <strong>Diagnosis:</strong>
+        <p style={{ marginTop: '0.25rem', padding: '0.75rem', backgroundColor: 'var(--neutral-50)', borderRadius: '8px', border: '1px solid var(--neutral-150)', fontSize: '0.9rem' }}>
+          {record.diagnosis}
+        </p>
+      </div>
+
+      {record.notes && (
+        <div>
+          <strong>Clinical Notes:</strong>
+          <p style={{ marginTop: '0.25rem', padding: '0.75rem', backgroundColor: 'var(--neutral-50)', borderRadius: '8px', border: '1px solid var(--neutral-150)', fontStyle: 'italic', fontSize: '0.9rem', color: 'var(--neutral-600)' }}>
+            {record.notes}
+          </p>
+        </div>
+      )}
+
+      {prescriptions.length > 0 && (
+        <div>
+          <strong style={{ display: 'block', marginBottom: '0.5rem' }}>💊 Prescribed Medications:</strong>
+          <div style={{ border: '1px solid var(--neutral-200)', borderRadius: '8px', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--neutral-100)', borderBottom: '1px solid var(--neutral-200)' }}>
+                  <th style={{ padding: '0.5rem' }}>Drug</th>
+                  <th style={{ padding: '0.5rem' }}>Dosage</th>
+                  <th style={{ padding: '0.5rem' }}>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prescriptions.map((m, idx) => (
+                  <tr key={idx} style={{ borderBottom: idx < prescriptions.length - 1 ? '1px solid var(--neutral-150)' : 'none' }}>
+                    <td style={{ padding: '0.5rem', fontWeight: 'bold' }}>{m.name}</td>
+                    <td style={{ padding: '0.5rem' }}>{m.dosage} ({[m.morning && '☀️', m.afternoon && '🌤️', m.night && '🌙'].filter(Boolean).join(' ')})</td>
+                    <td style={{ padding: '0.5rem' }}>{m.days} days</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {vaccinations.length > 0 && (
+        <div>
+          <strong style={{ display: 'block', marginBottom: '0.5rem' }}>💉 Administered Vaccine:</strong>
+          <div style={{ border: '1px solid var(--neutral-200)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.85rem' }}>
+            💉 <strong>{vaccinations[0].name}</strong> (Batch: {vaccinations[0].batch} • Manufacturer: {vaccinations[0].manufacturer})<br/>
+            Next Booster Date: <strong style={{ color: 'var(--primary)' }}>{vaccinations[0].dueDate}</strong>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DoctorLogin = () => {
+  const { login, registerDoctor } = useAuth();
+  const navigate = useNavigate();
+  const [tab, setTab] = useState('login');
+  
+  // Login fields
+  const [email, setEmail] = useState('doctor@jacovet.com');
+  const [password, setPassword] = useState('doctor123');
+  
+  // Signup fields
+  const [signupForm, setSignupForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    specialty: 'General Medicine',
+    experience: '3 years'
+  });
+
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      showToast('Please specify credentials.', 'danger');
+      return;
+    }
+    const res = await login(email, password, 'doctor');
+    if (res.success) {
+      showToast('Successfully logged in! Opening workspace...');
+    } else {
+      showToast(res.message, 'danger');
+    }
+  };
+
+  const handleSignupSubmit = async (e) => {
+    e.preventDefault();
+    const { name, email, password, specialty, experience } = signupForm;
+    if (!name || !email || !password || !specialty) {
+      showToast('Please fill out all required fields.', 'danger');
+      return;
+    }
+    const res = await registerDoctor(name, email, password, specialty, experience);
+    if (res.success) {
+      showToast('Account registered successfully! Opening workspace...');
+    } else {
+      showToast(res.message, 'danger');
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '85vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.5rem', background: '#f8fafc' }}>
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
+
+      <div className="card" style={{ maxWidth: '460px', width: '100%', padding: '2.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <button 
+          className="btn btn-secondary" 
+          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', marginBottom: '1.5rem', border: 'none' }}
+          onClick={() => navigate('/')}
+        >
+          <ArrowLeft size={12} /> Back to Search
+        </button>
+
+        {/* Tab switcher */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem', marginBottom: '1.5rem', backgroundColor: 'var(--neutral-100)', padding: '0.25rem', borderRadius: '8px' }}>
+          <button 
+            type="button"
+            style={{ border: 'none', padding: '0.45rem', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', backgroundColor: tab === 'login' ? 'white' : 'transparent', color: tab === 'login' ? 'var(--primary)' : 'var(--neutral-500)' }}
+            onClick={() => setTab('login')}
+          >
+            Doctor Log In
+          </button>
+          <button 
+            type="button"
+            style={{ border: 'none', padding: '0.45rem', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', backgroundColor: tab === 'signup' ? 'white' : 'transparent', color: tab === 'signup' ? 'var(--primary)' : 'var(--neutral-500)' }}
+            onClick={() => setTab('signup')}
+          >
+            Register / Join
+          </button>
+        </div>
+
+        {tab === 'login' ? (
+          <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.65rem', fontWeight: '800' }}>Doctor Workspace Login</h2>
+              <p style={{ color: 'var(--neutral-500)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                Check-in patients, diagnose cases, and monitor clinic stock levels.
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Access Email</label>
+              <input 
+                type="email" 
+                className="form-control" 
+                placeholder="doctor@domain.com" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input 
+                type="password" 
+                className="form-control" 
+                placeholder="••••••••" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+              />
+            </div>
+
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+              Access Workspace 🩺
+            </button>
+
+            <div style={{ backgroundColor: 'var(--neutral-100)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--neutral-600)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div>🔑 <strong>Demo Email:</strong> <code>doctor@jacovet.com</code></div>
+              <div>🔑 <strong>Demo Passcode:</strong> <code>doctor123</code></div>
+            </div>
+
+            <div style={{ marginTop: '1rem', borderTop: '1px solid var(--neutral-200)', paddingTop: '1rem', textAlign: 'center' }}>
+              <button type="button" style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => navigate('/login')}>
+                ➔ Switch to Pet Owner Login
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleSignupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.65rem', fontWeight: '800' }}>Register Veterinarian</h2>
+              <p style={{ color: 'var(--neutral-500)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                Join JacoVet to setup your consult queues, manage inventory, and track cases.
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Full Name</label>
+              <input 
+                type="text" 
+                className="form-control" 
+                placeholder="Dr. Rajesh Patel" 
+                value={signupForm.name} 
+                onChange={(e) => setSignupForm(prev => ({ ...prev, name: e.target.value }))} 
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Access Email</label>
+              <input 
+                type="email" 
+                className="form-control" 
+                placeholder="doctor@domain.com" 
+                value={signupForm.email} 
+                onChange={(e) => setSignupForm(prev => ({ ...prev, email: e.target.value }))} 
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input 
+                type="password" 
+                className="form-control" 
+                placeholder="••••••••" 
+                value={signupForm.password} 
+                onChange={(e) => setSignupForm(prev => ({ ...prev, password: e.target.value }))} 
+                required 
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <div className="form-group">
+                <label className="form-label">Specialty</label>
+                <select 
+                  className="form-control"
+                  style={{ fontSize: '0.85rem' }}
+                  value={signupForm.specialty} 
+                  onChange={(e) => setSignupForm(prev => ({ ...prev, specialty: e.target.value }))}
+                >
+                  <option value="General Medicine">General Medicine</option>
+                  <option value="Surgery & Orthopedics">Surgery & Ortho</option>
+                  <option value="Feline Specialist">Feline Specialist</option>
+                  <option value="Avian & Exotics">Avian & Exotics</option>
+                  <option value="Dentistry & Hygiene">Dentistry & Hygiene</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Experience</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. 5 years" 
+                  value={signupForm.experience} 
+                  onChange={(e) => setSignupForm(prev => ({ ...prev, experience: e.target.value }))} 
+                  required 
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+              Register & Access Workspace 🐾
+            </button>
+
+            <div style={{ marginTop: '1rem', borderTop: '1px solid var(--neutral-200)', paddingTop: '1rem', textAlign: 'center' }}>
+              <button type="button" style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => navigate('/login')}>
+                ➔ Switch to Pet Owner Login
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 };

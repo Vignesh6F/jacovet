@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppointments } from '../hooks/useAppointments';
 import { useCompleteCheckout } from '../hooks/useAdmin';
 import Toast from '../components/Toast';
-import { DollarSign, Clock, Calendar, CheckCircle } from 'lucide-react';
+import { DollarSign, Clock, Calendar, CheckCircle, ArrowLeft } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, isLoggedIn, loading } = useAuth();
+  const navigate = useNavigate();
   
   // Queries
-  const { data: appointments, isLoading: apptsLoading } = useAppointments('admin');
+  const { data: appointments, isLoading: apptsLoading } = useAppointments('admin', isLoggedIn && user?.role === 'admin');
   const checkoutMutation = useCompleteCheckout();
 
   // States
@@ -18,6 +20,14 @@ const AdminDashboard = () => {
   
   // Toast
   const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  if (loading) {
+    return <div className="container" style={{ padding: '6rem 0', textAlign: 'center' }}>Loading application session...</div>;
+  }
+
+  if (!isLoggedIn || user?.role !== 'admin') {
+    return <AdminLogin />;
+  }
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -204,6 +214,96 @@ const AdminDashboard = () => {
         </div>
       )}
 
+    </div>
+  );
+};
+
+const AdminLogin = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('admin@jacovet.com');
+  const [password, setPassword] = useState('admin123');
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      showToast('Please specify credentials.', 'danger');
+      return;
+    }
+    const res = await login(email, password, 'admin');
+    if (res.success) {
+      showToast('Successfully logged in! Opening administration desk...');
+    } else {
+      showToast(res.message, 'danger');
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '85vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.5rem', background: '#f8fafc' }}>
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
+
+      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '2.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <button 
+          className="btn btn-secondary" 
+          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', marginBottom: '1.5rem', border: 'none' }}
+          onClick={() => navigate('/')}
+        >
+          <ArrowLeft size={12} /> Back to Search
+        </button>
+
+        <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.65rem', fontWeight: '800' }}>Desk Admin Login</h2>
+            <p style={{ color: 'var(--neutral-500)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+              Manage clinic schedules, calendar queues, and patient invoicing checkouts.
+            </p>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Access Email</label>
+            <input 
+              type="email" 
+              className="form-control" 
+              placeholder="admin@domain.com" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input 
+              type="password" 
+              className="form-control" 
+              placeholder="••••••••" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+            Access Workspace 💼
+          </button>
+
+          <div style={{ backgroundColor: 'var(--neutral-100)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--neutral-600)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div>🔑 <strong>Demo Email:</strong> <code>admin@jacovet.com</code></div>
+            <div>🔑 <strong>Demo Passcode:</strong> <code>admin123</code></div>
+          </div>
+
+          <div style={{ marginTop: '1rem', borderTop: '1px solid var(--neutral-200)', paddingTop: '1rem', textAlign: 'center' }}>
+            <button type="button" style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => navigate('/login')}>
+              ➔ Switch to Pet Owner Login
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

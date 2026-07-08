@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { authenticate, restrictTo } = require('../middleware/auth');
-const { registerOwner, login } = require('../controllers/authController');
+const { registerOwner, registerDoctor, login } = require('../controllers/authController');
 const { getMyPets, addPet, searchPets } = require('../controllers/petController');
 const { getPetTimeline, addConsultRecord } = require('../controllers/recordController');
 const {
@@ -11,13 +11,15 @@ const {
   getAdminAppointments,
   bookAppointment,
   cancelAppointment,
-  rescheduleAppointment
+  rescheduleAppointment,
+  getBookedSlots
 } = require('../controllers/appointmentController');
 const { getInventory, restockItem, restockAll } = require('../controllers/inventoryController');
 const { getAuditLogs, getClinicsAndVets, completeCheckout, updateVetPlan } = require('../controllers/adminController');
 
 // 1. Authentication
 router.post('/auth/register', registerOwner);
+router.post('/auth/register-doctor', registerDoctor);
 router.post('/auth/login', login);
 
 // 2. Directories (Publicly viewable for booking search)
@@ -36,6 +38,7 @@ router.post('/records/consult', authenticate, restrictTo('doctor'), addConsultRe
 router.get('/appointments/owner', authenticate, restrictTo('owner'), getOwnerAppointments);
 router.get('/appointments/doctor', authenticate, restrictTo('doctor'), getDoctorAppointments);
 router.get('/appointments/admin', authenticate, restrictTo('admin'), getAdminAppointments);
+router.get('/appointments/booked/:vetId', authenticate, getBookedSlots);
 router.post('/appointments/book', authenticate, restrictTo('owner'), bookAppointment);
 router.put('/appointments/cancel/:id', authenticate, cancelAppointment);
 router.put('/appointments/reschedule/:id', authenticate, restrictTo('owner'), rescheduleAppointment);

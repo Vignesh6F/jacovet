@@ -105,34 +105,6 @@ const LoginPortal = () => {
           <ArrowLeft size={12} /> Back to Search
         </button>
 
-        {/* Tab switcher */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '0.25rem', marginBottom: '2rem', backgroundColor: 'var(--neutral-100)', padding: '0.25rem', borderRadius: '10px' }}>
-          <button 
-            style={{ border: 'none', padding: '0.5rem 0.2rem', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', backgroundColor: (authTab === 'owner-login' || authTab === 'owner-signup') ? 'white' : 'transparent', color: (authTab === 'owner-login' || authTab === 'owner-signup') ? 'var(--primary)' : 'var(--neutral-500)' }}
-            onClick={() => { setAuthTab('owner-login'); setEmail(''); setPassword(''); }}
-          >
-            Pet Owner
-          </button>
-          <button 
-            style={{ border: 'none', padding: '0.5rem 0.2rem', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', backgroundColor: authTab === 'doctor-login' ? 'white' : 'transparent', color: authTab === 'doctor-login' ? 'var(--primary)' : 'var(--neutral-500)' }}
-            onClick={() => handleAutofill('doctor')}
-          >
-            Veterinarian
-          </button>
-          <button 
-            style={{ border: 'none', padding: '0.5rem 0.2rem', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', backgroundColor: authTab === 'admin-login' ? 'white' : 'transparent', color: authTab === 'admin-login' ? 'var(--primary)' : 'var(--neutral-500)' }}
-            onClick={() => handleAutofill('admin')}
-          >
-            Desk Admin
-          </button>
-          <button 
-            style={{ border: 'none', padding: '0.5rem 0.2rem', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', backgroundColor: authTab === 'super-login' ? 'white' : 'transparent', color: authTab === 'super-login' ? 'var(--primary)' : 'var(--neutral-500)' }}
-            onClick={() => handleAutofill('super')}
-          >
-            Operations
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
             <h2 style={{ fontSize: '1.75rem', fontWeight: '800' }}>
@@ -217,13 +189,6 @@ const LoginPortal = () => {
                 Log in here
               </button>
             </span>
-          )}
-
-          {/* Autofill testing helpers */}
-          {(authTab === 'doctor-login' || authTab === 'admin-login' || authTab === 'super-login') && (
-            <div style={{ backgroundColor: 'var(--neutral-100)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--neutral-600)' }}>
-              🔑 <strong>Access Credentials:</strong> <code style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{email}</code> / <code style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{password}</code>
-            </div>
           )}
         </form>
       </div>

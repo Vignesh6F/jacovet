@@ -99,7 +99,7 @@ const login = async (req, res) => {
 
     const user = await prisma.user.findFirst({
       where: {
-        email: { equals: email.trim(), mode: 'insensitive' },
+        email: email.trim(),
         role
       }
     });
@@ -154,7 +154,95 @@ const login = async (req, res) => {
   }
 };
 
+// Register Doctor
+const registerDoctor = async (req, res) => {
+  try {
+    const { name, email, password, specialty, experience } = req.body;
+
+    if (!name || !email || !password || !specialty) {
+      return res.status(400).json({ message: 'Name, email, password, and specialty are required.' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email is already registered.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Get the first clinic in the database or fall back to creating one
+    let clinic = await prisma.clinic.findFirst();
+    if (!clinic) {
+      clinic = await prisma.clinic.create({
+        data: {
+          name: 'JacoVet Central Clinic',
+          location: 'Madurai Central',
+          rating: 5.0
+        }
+      });
+    }
+
+    // Create User and Vet in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          role: 'doctor'
+        }
+      });
+
+      const vet = await tx.vet.create({
+        data: {
+          name,
+          specialty,
+          experience: experience || '1 year',
+          rating: 5.0,
+          price: 500,
+          clinicId: clinic.id,
+          location: clinic.location,
+          lat: 9.9250,
+          lng: 78.1200,
+          image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150',
+          bio: `Specialized in ${specialty}. Welcome to my workspace!`,
+          categories: 'Dog,Cat,Bird,Exotic',
+          plan: 'FreeStarter',
+          userId: user.id
+        }
+      });
+
+      return { user, vet };
+    });
+
+    const token = jwt.sign({ id: result.user.id, email: result.user.email, role: result.user.role, profileName: result.vet.name }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Log registration audit
+    await prisma.auditLog.create({
+      data: {
+        user: result.user.email,
+        role: 'Veterinarian',
+        action: 'Register Profile',
+        details: `Registered doctor profile: ${result.vet.name}.`
+      }
+    });
+
+    return res.status(201).json({
+      token,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        name: result.vet.name
+      }
+    });
+  } catch (error) {
+    console.error('Doctor registration error:', error);
+    return res.status(500).json({ message: 'Server error during doctor registration.' });
+  }
+};
+
 module.exports = {
   registerOwner,
+  registerDoctor,
   login
 };

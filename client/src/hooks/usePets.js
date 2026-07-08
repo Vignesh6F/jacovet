@@ -14,7 +14,7 @@ export const useMyPets = (enabled = true) => {
 };
 
 // Search pet records (for doctors)
-export const useSearchPets = (searchQuery) => {
+export const useSearchPets = (searchQuery, enabled = true) => {
   return useQuery({
     queryKey: ['pets', 'search', searchQuery],
     queryFn: async () => {
@@ -22,7 +22,7 @@ export const useSearchPets = (searchQuery) => {
       const response = await api.get(`/pets/search?q=${searchQuery}`);
       return response.data;
     },
-    enabled: !!searchQuery
+    enabled: !!searchQuery && enabled
   });
 };
 

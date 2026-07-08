@@ -12,9 +12,11 @@ const Toast = ({ message, type = 'success', onClose }) => {
   if (!message) return null;
 
   return (
-    <div className={`toast ${type === 'danger' ? 'toast-danger' : 'toast-success'}`}>
-      {type === 'danger' ? <AlertCircle size={18} style={{ color: 'var(--accent-red)' }} /> : <CheckCircle2 size={18} style={{ color: 'var(--accent-green)' }} />}
-      <span>{message}</span>
+    <div className="toast-container">
+      <div className={`toast ${type === 'danger' ? 'toast-danger' : 'toast-success'}`}>
+        {type === 'danger' ? <AlertCircle size={18} style={{ color: 'var(--accent-red)' }} /> : <CheckCircle2 size={18} style={{ color: 'var(--accent-green)' }} />}
+        <span>{message}</span>
+      </div>
     </div>
   );
 };

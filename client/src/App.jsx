@@ -34,8 +34,14 @@ function App() {
                 <Route path="/login" element={<LoginPortal />} />
                 <Route path="/dashboard" element={<ClientDashboard />} />
                 <Route path="/doctor" element={<VetDashboard />} />
+                <Route path="/doctors" element={<VetDashboard />} />
+                <Route path="/doctor-admin" element={<VetDashboard />} />
+                <Route path="/doctors-admin" element={<VetDashboard />} />
+                <Route path="/doctor/admin" element={<VetDashboard />} />
                 <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admins" element={<AdminDashboard />} />
                 <Route path="/super" element={<SuperAdminDashboard />} />
+                <Route path="/super-admin" element={<SuperAdminDashboard />} />
                 <Route path="/pet/:petId" element={<PetTimeline />} />
               </Routes>
             </div>

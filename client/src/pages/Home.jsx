@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDirectories } from '../hooks/useDirectories';
 import { useMyPets } from '../hooks/usePets';
-import { useBookAppointment } from '../hooks/useAppointments';
+import { useBookAppointment, useBookedSlots } from '../hooks/useAppointments';
 import Toast from '../components/Toast';
 import { MapPin, Search, Calendar, Star, Info, Shield, CheckCircle } from 'lucide-react';
 
@@ -45,7 +45,26 @@ const Home = () => {
   const [bookingVet, setBookingVet] = useState(null);
   
   // Booking Form State
-  const [bookingForm, setBookingForm] = useState({ petId: '', date: '', time: '', reason: '' });
+  const [bookingForm, setBookingForm] = useState({ 
+    petId: '', 
+    date: new Date().toISOString().split('T')[0], 
+    time: '09:00 AM', 
+    reason: '' 
+  });
+
+  const { data: bookedSlots } = useBookedSlots(bookingVet?.id, bookingForm.date, !!bookingVet);
+
+  useEffect(() => {
+    if (bookedSlots && bookingForm.time) {
+      const isCurrentBooked = bookedSlots.some(b => b.time === bookingForm.time);
+      if (isCurrentBooked) {
+        const available = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'].find(
+          slot => !bookedSlots.some(b => b.time === slot)
+        );
+        setBookingForm(prev => ({ ...prev, time: available || '' }));
+      }
+    }
+  }, [bookedSlots, bookingForm.time]);
   
   // Notifications
   const [toast, setToast] = useState({ message: '', type: 'success' });
@@ -114,7 +133,12 @@ const Home = () => {
         onSuccess: () => {
           showToast(`Successfully scheduled appointment with ${bookingVet.name}!`);
           setBookingVet(null);
-          setBookingForm({ petId: '', date: '', time: '', reason: '' });
+          setBookingForm({ 
+            petId: '', 
+            date: new Date().toISOString().split('T')[0], 
+            time: '09:00 AM', 
+            reason: '' 
+          });
         },
         onError: (err) => {
           const errMsg = err.response?.data?.message || 'Failed to book slot. It might be conflicts.';
@@ -403,15 +427,22 @@ const Home = () => {
                 <div className="form-group">
                   <label className="form-label">Time Timing Slot</label>
                   <div className="slot-grid">
-                    {['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'].map(slot => (
-                      <div 
-                        key={slot}
-                        className={`slot-item ${bookingForm.time === slot ? 'active' : ''}`}
-                        onClick={() => setBookingForm(prev => ({ ...prev, time: slot }))}
-                      >
-                        {slot}
-                      </div>
-                    ))}
+                    {['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'].map(slot => {
+                      const isBooked = bookedSlots && bookedSlots.some(b => b.time === slot);
+                      return (
+                        <div 
+                          key={slot}
+                          className={`slot-item ${bookingForm.time === slot ? 'active' : ''} ${isBooked ? 'disabled' : ''}`}
+                          onClick={() => {
+                            if (!isBooked) {
+                              setBookingForm(prev => ({ ...prev, time: slot }));
+                            }
+                          }}
+                        >
+                          {slot}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
