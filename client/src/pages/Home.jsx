@@ -337,14 +337,21 @@ const Home = () => {
         ) : (
           <div className="vets-grid">
             {vetsList.map(vet => (
-              <div key={vet.id} className="vet-card">
+              <div 
+                key={vet.id} 
+                className="vet-card" 
+                style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                onClick={() => navigate(`/vet/${vet.id}`)}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+              >
                 <div className="vet-card-header">
                   <img className="vet-avatar" src={vet.image} alt={vet.name} />
                   <div className="vet-name-spec">
                     <span className="vet-rating">
                       <Star size={14} fill="currentColor" /> {vet.rating}
                     </span>
-                    <h3 className="vet-card-title">{vet.name}</h3>
+                    <h3 className="vet-card-title" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>{vet.name}</h3>
                     <span className="vet-card-spec">{vet.specialty}</span>
                     <span className="vet-card-exp">{vet.experience} experience</span>
                   </div>
@@ -369,8 +376,14 @@ const Home = () => {
                     <span className="vet-price-amount">₹{vet.price}</span>
                   </div>
                   
-                  <button className="btn btn-primary" onClick={() => triggerBookingGate(vet)}>
-                    {isLoggedIn ? 'Book Visit 🩺' : 'Login to Book'}
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      navigate(`/vet/${vet.id}?book=true`); 
+                    }}
+                  >
+                    Book Visit 🩺
                   </button>
                 </div>
               </div>

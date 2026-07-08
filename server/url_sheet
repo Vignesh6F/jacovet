@@ -1,0 +1,33 @@
+The Operation Desk refers to the Clinic Desk Administration workspace:
+
+1. Clinic Desk Administration (Operation Desk)
+Access URL: /admin (or /admins)
+Default Credentials:
+Access Email: admin@jacovet.com
+Password: admin123
+Features: Manage consultation schedules, doctor calendars, and client billing checkouts.
+
+
+
+2. Operations Command / Security Audit Center (Super Admin Desk)
+Access URL: /super (or /super-admin)
+Default Credentials:
+Access Email: super@jacovet.com
+Password: super123
+Features: View audit logs, check system health, and adjust clinic veterinarian subscription plans.
+
+-----------------------------------------------------------------------------
+Dedicated User Login Page (/login)
+
+The tab switcher was removed from the main login page to focus exclusively on Pet Owners (Users) login and signup.
+Added a clear Staff Portals redirection section at the bottom of the card with direct links to Doctor Login 🩺 and Admin Login 💼.
+Dedicated Doctor Login at /doctor
+
+If an unauthenticated user or non-doctor visits /doctor, the system blocks page loading and displays a dedicated Doctor Workspace Login portal.
+This portal includes an autofill helper box populated with default demo credentials (doctor@jacovet.com / doctor123) and a return link to switch back to the Pet Owner login.
+Once logged in as a doctor, it displays the clinic patient consult dashboard.
+Dedicated Admin Login at /admin
+
+If an unauthenticated user or non-admin visits /admin, the system blocks page loading and displays a dedicated Desk Admin Login portal.
+This portal is populated with default demo credentials (admin@jacovet.com / admin123) and a return link to switch back to the Pet Owner login.
+Once logged in as an admin, it displays the clinic scheduler queue and invoicing desk.

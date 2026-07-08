@@ -36,7 +36,12 @@ const getDoctorAppointments = async (req, res) => {
     const appointments = await prisma.appointment.findMany({
       where: { vetId: vet.id },
       include: {
-        pet: true
+        pet: true,
+        vet: {
+          include: {
+            clinic: true
+          }
+        }
       },
       orderBy: [
         { date: 'asc' },

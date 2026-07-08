@@ -5,6 +5,7 @@ import { useAppointments } from '../hooks/useAppointments';
 import { useSearchPets } from '../hooks/usePets';
 import { useAddConsultRecord, usePetTimeline } from '../hooks/useRecords';
 import { useInventory, useRestockItem, useRestockAll } from '../hooks/useInventory';
+import { useDirectories } from '../hooks/useDirectories';
 import Toast from '../components/Toast';
 import { Stethoscope, Search, CheckCircle, Package, ArrowRight, ArrowLeft, User, ShieldCheck } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const VetDashboard = () => {
   // Queries
   const { data: appointments, isLoading: apptsLoading } = useAppointments('doctor', isLoggedIn && user?.role === 'doctor');
   const { data: inventory, isLoading: invLoading } = useInventory(isLoggedIn && user?.role === 'doctor');
+  const { data: directory } = useDirectories();
   
   const addConsultMutation = useAddConsultRecord();
   const restockMutation = useRestockItem();
@@ -158,6 +160,21 @@ const VetDashboard = () => {
   const upcomingAppts = appointments ? appointments.filter(a => a.status === 'upcoming') : [];
   const completedAppts = appointments ? appointments.filter(a => a.status === 'completed') : [];
 
+  const currentVet = directory?.vets?.find(v => v.userId === user?.id);
+  const activePlan = currentVet?.plan || 'FreeStarter';
+  const vetPrice = currentVet?.price || 650;
+  const clinicName = currentVet?.clinic?.name || 'JacoVet Clinic';
+  const uniquePetsVisited = [...new Set(completedAppts.map(a => a.petId))].length;
+  const totalEarned = completedAppts.reduce((sum, appt) => sum + (appt.vet?.price || vetPrice), 0);
+
+  // Calculate registration trial days
+  const createdDate = user?.createdAt ? new Date(user.createdAt) : new Date();
+  const today = new Date();
+  const diffTime = Math.max(0, today - createdDate);
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const trialDaysRemaining = Math.max(0, 30 - diffDays);
+  const trialExpired = diffDays >= 30;
+
   return (
     <div className="container" style={{ padding: '3rem 0' }}>
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
@@ -169,9 +186,61 @@ const VetDashboard = () => {
           <p style={{ color: 'var(--neutral-500)' }}>Welcome back, <strong>{user?.name}</strong>. Diagnose patients and monitor clinic stock levels.</p>
         </div>
         <span className="role-badge" style={{ cursor: 'default' }}>
-          Madurai Pet Care Center
+          {clinicName}
         </span>
       </div>
+
+      {/* Subscription Alert Banner */}
+      {isLoggedIn && user?.role === 'doctor' && (
+        <div style={{
+          backgroundColor: trialExpired ? '#fef2f2' : '#f0fdf4',
+          border: trialExpired ? '1px solid #fee2e2' : '1px solid #dcfce7',
+          padding: '1.25rem',
+          borderRadius: '12px',
+          marginBottom: '2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: trialExpired ? '#991b1b' : '#166534', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              {trialExpired ? '⚠️ Subscription Trial Expired' : '🚀 Free Tier Trial Active'}
+              <span style={{ 
+                fontSize: '0.75rem', 
+                backgroundColor: trialExpired ? '#fee2e2' : '#dcfce7', 
+                color: trialExpired ? '#b91c1c' : '#15803d', 
+                padding: '0.15rem 0.5rem', 
+                borderRadius: '6px' 
+              }}>
+                Current Plan: {activePlan}
+              </span>
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: trialExpired ? '#b91c1c' : '#15803d', margin: '0.25rem 0 0 0' }}>
+              {trialExpired 
+                ? 'Your 30-day FreeStarter trial has ended. Please upgrade your plan to maintain practitioner visibility ranking.'
+                : `You are on the FreeStarter tier. You have ${trialDaysRemaining} days remaining in your trial. Upgrade for gold partner verification badges and priority indexing.`}
+            </p>
+          </div>
+          <button 
+            type="button" 
+            className="btn" 
+            style={{ 
+              backgroundColor: trialExpired ? '#dc2626' : '#16a34a', 
+              color: 'white', 
+              border: 'none', 
+              fontWeight: 'bold', 
+              fontSize: '0.85rem',
+              padding: '0.5rem 1rem',
+              borderRadius: '8px'
+            }}
+            onClick={() => navigate(`/plans?select=${activePlan}`)}
+          >
+            Upgrade Plan ➔
+          </button>
+        </div>
+      )}
 
       {/* Switcher tabs */}
       <div className="appointments-tabs" style={{ marginBottom: '2rem' }}>
@@ -190,7 +259,7 @@ const VetDashboard = () => {
       {vetDashboardTab === 'appointments' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem' }}>
             <div 
               className="card" 
               style={{ padding: '1.25rem', marginBottom: 0, cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
@@ -212,8 +281,12 @@ const VetDashboard = () => {
               <span className="stat-number" style={{ color: 'var(--secondary)', marginTop: '0.25rem' }}>{completedAppts.length}</span>
             </div>
             <div className="card" style={{ padding: '1.25rem', marginBottom: 0 }}>
-              <span className="stat-label">Consultation Income</span>
-              <span className="stat-number" style={{ color: 'var(--neutral-900)', marginTop: '0.25rem' }}>₹{completedAppts.length * 650}</span>
+              <span className="stat-label">Unique Patients Visited</span>
+              <span className="stat-number" style={{ color: 'var(--primary-dark)', marginTop: '0.25rem' }}>{uniquePetsVisited}</span>
+            </div>
+            <div className="card" style={{ padding: '1.25rem', marginBottom: 0 }}>
+              <span className="stat-label">My Consult Income</span>
+              <span className="stat-number" style={{ color: 'var(--neutral-900)', marginTop: '0.25rem' }}>₹{totalEarned}</span>
             </div>
           </div>
 

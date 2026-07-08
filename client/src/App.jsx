@@ -10,6 +10,8 @@ import VetDashboard from './pages/VetDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import PetTimeline from './pages/PetTimeline';
+import Plans from './pages/Plans';
+import VetDetails from './pages/VetDetails';
 
 // Create a client for TanStack Query
 const queryClient = new QueryClient({
@@ -43,6 +45,9 @@ function App() {
                 <Route path="/super" element={<SuperAdminDashboard />} />
                 <Route path="/super-admin" element={<SuperAdminDashboard />} />
                 <Route path="/pet/:petId" element={<PetTimeline />} />
+                <Route path="/plans" element={<Plans />} />
+                <Route path="/pricing" element={<Plans />} />
+                <Route path="/vet/:vetId" element={<VetDetails />} />
               </Routes>
             </div>
             

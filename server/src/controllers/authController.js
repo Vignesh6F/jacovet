@@ -79,7 +79,8 @@ const registerOwner = async (req, res) => {
         id: result.user.id,
         email: result.user.email,
         role: result.user.role,
-        name: result.owner.name
+        name: result.owner.name,
+        createdAt: result.user.createdAt
       }
     });
   } catch (error) {
@@ -145,7 +146,8 @@ const login = async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        name: profileName
+        name: profileName,
+        createdAt: user.createdAt
       }
     });
   } catch (error) {
@@ -232,7 +234,8 @@ const registerDoctor = async (req, res) => {
         id: result.user.id,
         email: result.user.email,
         role: result.user.role,
-        name: result.vet.name
+        name: result.vet.name,
+        createdAt: result.user.createdAt
       }
     });
   } catch (error) {

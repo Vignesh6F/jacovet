@@ -1,17 +1,30 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useAuditLogs, useUpdateVetPlan } from '../hooks/useAdmin';
 import { useDirectories } from '../hooks/useDirectories';
 import Toast from '../components/Toast';
-import { Shield, Clock, Award, Star, List } from 'lucide-react';
+import { Shield, Clock, Award, Star, List, ArrowLeft } from 'lucide-react';
 
 const SuperAdminDashboard = () => {
+  const { user, isLoggedIn, loading } = useAuth();
+  const navigate = useNavigate();
+
   // Queries
-  const { data: logs, isLoading: logsLoading } = useAuditLogs();
-  const { data: directory, isLoading: dirLoading } = useDirectories();
+  const { data: logs, isLoading: logsLoading } = useAuditLogs(isLoggedIn && user?.role === 'super-admin');
+  const { data: directory, isLoading: dirLoading } = useDirectories(isLoggedIn && user?.role === 'super-admin');
   const updatePlanMutation = useUpdateVetPlan();
 
   // Toast
   const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  if (loading) {
+    return <div className="container" style={{ padding: '6rem 0', textAlign: 'center' }}>Loading application session...</div>;
+  }
+
+  if (!isLoggedIn || user?.role !== 'super-admin') {
+    return <SuperLogin />;
+  }
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -164,6 +177,96 @@ const SuperAdminDashboard = () => {
           )}
         </div>
 
+      </div>
+    </div>
+  );
+};
+
+const SuperLogin = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('super@jacovet.com');
+  const [password, setPassword] = useState('super123');
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      showToast('Please specify credentials.', 'danger');
+      return;
+    }
+    const res = await login(email, password, 'super-admin');
+    if (res.success) {
+      showToast('Successfully logged in! Opening command center...');
+    } else {
+      showToast(res.message, 'danger');
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '85vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.5rem', background: '#f8fafc' }}>
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
+
+      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '2.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <button 
+          className="btn btn-secondary" 
+          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', marginBottom: '1.5rem', border: 'none' }}
+          onClick={() => navigate('/')}
+        >
+          <ArrowLeft size={12} /> Back to Search
+        </button>
+
+        <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.65rem', fontWeight: '800' }}>Operations Command Login</h2>
+            <p style={{ color: 'var(--neutral-500)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+              Central auditing desk. Monitor security records and manage practitioner premium plan statuses.
+            </p>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Access Email</label>
+            <input 
+              type="email" 
+              className="form-control" 
+              placeholder="super@domain.com" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input 
+              type="password" 
+              className="form-control" 
+              placeholder="••••••••" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+            Access Workspace 🛡️
+          </button>
+
+          <div style={{ backgroundColor: 'var(--neutral-100)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--neutral-600)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div>🔑 <strong>Demo Email:</strong> <code>super@jacovet.com</code></div>
+            <div>🔑 <strong>Demo Passcode:</strong> <code>super123</code></div>
+          </div>
+
+          <div style={{ marginTop: '1rem', borderTop: '1px solid var(--neutral-200)', paddingTop: '1rem', textAlign: 'center' }}>
+            <button type="button" style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => navigate('/login')}>
+              ➔ Switch to Pet Owner Login
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
